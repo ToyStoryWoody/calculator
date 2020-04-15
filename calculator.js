@@ -1,30 +1,32 @@
 function evaluate() {
-	equHistory[equHistory.length] = evalArray.join('');
+	if (pushCurrentNum() && evalArray.length >= 3) {
+		equHistory[equHistory.length] = evalArray.join('');
 
-	// Do multiplication and division first
-	while (evalArray.includes('÷') || evalArray.includes('×')) {
-		index = evalArray.findIndex((x) => {
-			if (x === '÷' || x === '×') {
-				return true;
-			}
-			else return false;
-		});
-		let operator = evalArray[index];
-		let n1 = evalArray[index - 1];
-		let n2 = evalArray[index + 1];
-		evalArray[index - 1] = operate(operator, n1, n2);
-		evalArray.splice(index, 2);
-	}
+		// Do multiplication and division first
+		while (evalArray.includes('÷') || evalArray.includes('×')) {
+			index = evalArray.findIndex((x) => {
+				if (x === '÷' || x === '×') {
+					return true;
+				}
+				else return false;
+			});
+			let operator = evalArray[index];
+			let n1 = evalArray[index - 1];
+			let n2 = evalArray[index + 1];
+			evalArray[index - 1] = operate(operator, n1, n2);
+			evalArray.splice(index, 2);
+		}
 
-	// All other operations
-	while (evalArray.length >= 3) {
-		evalArray[0] = operate(evalArray[1], evalArray[0], evalArray[2]);
-		evalArray.splice(1, 2); 
+		// All other operations
+		while (evalArray.length >= 3) {
+			evalArray[0] = operate(evalArray[1], evalArray[0], evalArray[2]);
+			evalArray.splice(1, 2); 
+		}
+		currentNum = evalArray[0].toString();
+		equHistory[equHistory.length - 1] += '=' + evalArray[0];
+		evalArray = [];
+		updateDisplay();
 	}
-	currentNum = evalArray[0];
-	equHistory[equHistory.length - 1] += '=' + evalArray[0];
-	evalArray = [];
-	updateDisplay();
 }
 
 function operate (operator, n1, n2) {
@@ -36,9 +38,13 @@ function operate (operator, n1, n2) {
 			return subtract(n1, n2);
 			break;
 		case '×':
+		case '*':
+		case 'x': 
+		case 'X':
 			return multiply(n1, n2);
 			break;
 		case '÷':
+		case '/':
 			if (n2 == 0) {
 				alert("You fool! You can't divide by zero!");
 				return "I can't even";
@@ -67,17 +73,51 @@ function divide (a, b) {
 	return a / b;
 }
 
-function numPress() {
+function numPress(num) {
 	if (currentNum === '0') currentNum = '';
-	currentNum += this.textContent.trim();
+	num = pressHelper(num);
+	currentNum += num;
 	updateDisplay();
 }
 
-function opPress() {
+function opPress(op) {
+	op = pressHelper(op);
 	if (pushCurrentNum()) {
-		evalArray.push(this.textContent.trim());
+		evalArray.push(op);
 		updateDisplay();
 	}
+}
+
+function pressHelper(event) {
+	let keyPressed;
+	if (event.target.type === "button") {
+		keyPressed = event.target.textContent.trim();
+	} else if (event.target.localName === "body") {
+		keyPressed = event.key.trim();
+		switch (keyPressed) {
+			case '/':
+				keyPressed = '÷';
+				break;
+			case '*':
+			case 'x': 
+			case 'X':
+				keyPressed = '×';
+				break;
+		}
+	}
+	return keyPressed;
+}
+
+function decPress() {
+	if (!currentNum.includes('.')) {
+		currentNum += '.';
+		updateDisplay();
+	}
+}
+
+function delPress() {
+	currentNum = currentNum.substr(0, currentNum.length - 1);
+	updateDisplay();
 }
 
 function pushCurrentNum() {
@@ -125,25 +165,36 @@ ops.forEach((button) => {
 });
 
 const equals = document.querySelector('#equals')
-equals.addEventListener('click', () => {
-	if (pushCurrentNum() && evalArray.length >= 3) evaluate();
-	else return;
-});
+equals.addEventListener('click', evaluate);
 
 const clear = document.querySelector('.clear');
 clear.addEventListener('click', clearAll);
 
 const dec = document.querySelector('.decimal');
-dec.addEventListener('click', () => {
-	if (!currentNum.includes('.')) {
-		currentNum += '.';
-		updateDisplay();
-	}
-	else return;
-})
+dec.addEventListener('click', decPress)
 
 const del = document.querySelector('.delete');
-del.addEventListener('click', () => {
-	currentNum = currentNum.substr(0, currentNum.length - 1);
-	updateDisplay();
-});
+del.addEventListener('click', delPress);
+
+window.onkeydown = (e) => {
+	if (parseInt(e.key) || e.key === '0') {
+		numPress(e);
+	}
+	const opPatt = new RegExp('[\-\/\+\*xX]');
+	if (opPatt.test(e.key)) {
+		opPress(e);
+	}
+	switch (e.key) {
+		case 'Enter':
+		case '=':
+			evaluate();
+			break;
+		case '.':
+			decPress();
+			break;
+		case 'Backspace':
+		case 'Delete':
+			delPress();
+			break;
+	}
+}
